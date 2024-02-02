@@ -5,11 +5,14 @@ import (
 	"github.com/gin-gonic/gin"
 	_ "github.com/gin-gonic/gin"
 	"net/http"
+	"xiaoweishu/webook/internal/domain"
+	"xiaoweishu/webook/internal/service"
 )
 
 type UserHandler struct {
 	emailExp    *regexp.Regexp
 	passwordExp *regexp.Regexp // 预编译
+	svc         *service.UserService
 }
 
 const (
@@ -17,11 +20,12 @@ const (
 	passwordRegexPattern = `^(?=.*[A-Za-z])(?=.*\d)(?=.*[$@$!%*#?&])[A-Za-z\d$@$!%*#?&]{8,}$`
 )
 
-func NewUserHandler() *UserHandler {
+func NewUserHandler(svc *service.UserService) *UserHandler {
 	return &UserHandler{
 		// 在引入三方库之后，要加一个option regexp.None
 		emailExp:    regexp.MustCompile(emailRegexPattern, regexp.None),
 		passwordExp: regexp.MustCompile(passwordRegexPattern, regexp.None),
+		svc:         svc,
 	}
 }
 func (h *UserHandler) RegisterRoutes(server *gin.Engine) {
@@ -72,6 +76,14 @@ func (h *UserHandler) SignUp(ctx *gin.Context) {
 	if !isPassword {
 		ctx.String(http.StatusOK, "密码格式不正确，包含数字，特殊字符且长度大于8位")
 		return
+	}
+	err = h.svc.Signup(ctx, domain.User{
+		Email:    req.Email,
+		Password: req.Password,
+	})
+
+	if err != nil {
+		ctx.String(http.StatusOK, "系统错误")
 	}
 	ctx.String(http.StatusOK, "注册成功")
 

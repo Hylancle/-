@@ -1,0 +1,14 @@
+version: "3"
+services:
+  mysql8:
+    image: mysql:8.0
+    restart: always
+    command: --default-authentication-plugin=mysql_native_password # 线上一般k8s
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+    volumes:
+      # 初始化脚本
+      - ./script/mysql/:/docker-entrypoint-initdb.d
+    ports:
+      # 常用端口
+      - "13316:3306"
