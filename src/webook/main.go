@@ -2,15 +2,18 @@ package main
 
 import (
 	"github.com/gin-contrib/cors"
+	"github.com/gin-contrib/sessions"
+	"github.com/gin-contrib/sessions/cookie"
 	"github.com/gin-gonic/gin"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 	"strings"
 	"time"
-	"xiaoweishu/webook/internal/repository"
-	"xiaoweishu/webook/internal/repository/dao"
-	"xiaoweishu/webook/internal/service"
-	"xiaoweishu/webook/internal/web"
+	"webook/internal/repository"
+	"webook/internal/repository/dao"
+	"webook/internal/service"
+	"webook/internal/web"
+	"webook/internal/web/middleware"
 )
 
 var (
@@ -47,6 +50,7 @@ func InitDB() *gorm.DB {
 
 func InitWebServer() *gin.Engine {
 	server := gin.Default()
+
 	server.Use(cors.New(cors.Config{
 		// 允许自带信息，cookie
 		AllowCredentials: true,
@@ -59,7 +63,14 @@ func InitWebServer() *gin.Engine {
 			return false
 		},
 		MaxAge: 12 * time.Hour,
-	}))
+	}), func(ctx *gin.Context) {
+		println("这是我的Middleware")
+	})
+	login := &middleware.LoginMiddlewareBuilder{}
+	// 存储数据的，userId存哪里
+
+	store := cookie.NewStore([]byte("secret"))
+	server.Use(sessions.Sessions("ssid", store), login.CheckLogin())
 	return server
 }
 

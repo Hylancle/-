@@ -2,11 +2,12 @@ package web
 
 import (
 	regexp "github.com/dlclark/regexp2"
+	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 	_ "github.com/gin-gonic/gin"
 	"net/http"
-	"xiaoweishu/webook/internal/domain"
-	"xiaoweishu/webook/internal/service"
+	"webook/internal/domain"
+	"webook/internal/service"
 )
 
 type UserHandler struct {
@@ -81,18 +82,50 @@ func (h *UserHandler) SignUp(ctx *gin.Context) {
 		Email:    req.Email,
 		Password: req.Password,
 	})
-
-	if err != nil {
+	switch err {
+	case nil:
+		ctx.String(http.StatusOK, "注册成功")
+	case service.ErrorDuplicateEmail:
+		ctx.String(http.StatusOK, "邮箱已经注册!")
+	default:
 		ctx.String(http.StatusOK, "系统错误")
 	}
-	ctx.String(http.StatusOK, "注册成功")
-
 }
 
 func (h *UserHandler) Login(ctx *gin.Context) {
-
+	type Req struct {
+		Email    string `json:"email"`
+		Password string `json:"password"`
+	}
+	var req Req
+	if err := ctx.Bind(&req); err != nil {
+		// 返回400 ， 可以不返回错误
+		return
+	}
+	u, err := h.svc.Login(ctx, req.Email, req.Password)
+	switch err {
+	case nil:
+		sess := sessions.Default(ctx)
+		sess.Set("userId", u.Id)
+		sess.Options(sessions.Options{
+			// 15min
+			MaxAge: 900,
+			//HttpOnly: true,
+		})
+		err = sess.Save()
+		if err != nil {
+			ctx.String(http.StatusOK, "session保存错误！")
+			return
+		}
+		ctx.String(http.StatusOK, "登录成功")
+	case service.ErrInvalidUserOrPassword:
+		ctx.String(http.StatusOK, "用户名或密码不正确")
+	default:
+		ctx.String(http.StatusOK, "系统错误")
+	}
 }
 
 func (h *UserHandler) Profile(ctx *gin.Context) {
+	ctx.String(http.StatusOK, "这是profile")
 
 }
