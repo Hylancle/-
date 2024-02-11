@@ -6,6 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 	_ "github.com/gin-gonic/gin"
 	"net/http"
+	"unicode/utf8"
 	"webook/internal/domain"
 	"webook/internal/service"
 )
@@ -37,6 +38,8 @@ func (h *UserHandler) RegisterRoutes(server *gin.Engine) {
 	ug.POST("/login", h.Login)
 	// POST /users/profile
 	ug.GET("/profile", h.Profile)
+	// POST /users/edit
+	ug.POST("/edit", h.Edit)
 }
 
 func (h *UserHandler) SignUp(ctx *gin.Context) {
@@ -126,6 +129,54 @@ func (h *UserHandler) Login(ctx *gin.Context) {
 }
 
 func (h *UserHandler) Profile(ctx *gin.Context) {
-	ctx.String(http.StatusOK, "这是profile")
+	sess := sessions.Default(ctx)
+	id := sess.Get("userId").(int64)
+	u, err := h.svc.Select(ctx, id)
+	if err != nil {
+		ctx.String(http.StatusOK, "系统错误")
+	}
+	type User struct {
+		NickName string `json:"nickname"`
+		Email    string `json:"email"`
+		AboutMe  string `json:"aboutMe"`
+		Birthday string `json:"birthday"`
+	}
+	ctx.JSON(http.StatusOK, User{
+		NickName: u.Nickname,
+		Email:    u.Email,
+		AboutMe:  u.AboutMe,
+		Birthday: u.Birthday,
+	})
 
+}
+
+func (h *UserHandler) Edit(ctx *gin.Context) {
+	type Req struct {
+		Birthday string `json:"birthday"`
+		AboutMe  string `json:"aboutMe"`
+		Nickname string `json:"nickname"`
+	}
+	var req Req
+	if err := ctx.Bind(&req); err != nil {
+		// 返回400 ， 可以不返回错误
+		return
+	}
+	// 判断自我介绍和昵称是否符合长度
+	if utf8.RuneCountInString(req.AboutMe) > 256 {
+		ctx.String(http.StatusOK, "自我介绍长度不大于256！")
+	}
+
+	if utf8.RuneCountInString(req.Nickname) > 10 {
+		ctx.String(http.StatusOK, "自我介绍长度不大于10！")
+	}
+
+	err := h.svc.Edit(ctx, domain.User{
+		AboutMe:  req.AboutMe,
+		Nickname: req.Nickname,
+		Birthday: req.Birthday,
+	})
+	if err != nil {
+		ctx.String(http.StatusOK, "更新失败")
+	}
+	ctx.String(http.StatusOK, "更新成功")
 }

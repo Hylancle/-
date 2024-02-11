@@ -26,14 +26,7 @@ func main() {
 
 	server := InitWebServer()
 	InitUser(server, db)
-	//u := dao.User{
-	//	Email:    "sssss",
-	//	Password: "ss",
-	//}
-	//db.Create(&u)
-
 	server.Run()
-
 }
 
 func InitDB() *gorm.DB {
